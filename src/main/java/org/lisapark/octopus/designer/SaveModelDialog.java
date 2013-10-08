@@ -147,6 +147,7 @@ public class SaveModelDialog extends StandardDialog {
         JButton cancelButton = ComponentFactory.createButton();
         cancelButton.setName(CANCEL);
         cancelButton.setAction(new AbstractAction(UIDefaultsLookup.getString("OptionPane.cancelButtonText")) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }
