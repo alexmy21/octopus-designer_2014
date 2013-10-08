@@ -38,11 +38,24 @@ public class OpenModelDialog extends StandardDialog {
     private final OctopusRepository repository;
     private ProcessingModel selectedProcessingModel;
     private JButton okButton;
+    
+    private String turl;
+    private Integer tport;
+    private String tuid;
+    private String tpsw;
+    
+    private JCheckBox searchOnServerChk;
 
-    private OpenModelDialog(JFrame frame, OctopusRepository repository) {
+    private OpenModelDialog(JFrame frame, OctopusRepository repository,
+                        String turl, Integer tport, String tuid, String tpsw) {
         super(frame, "Octopus");
         setResizable(false);
         this.repository = repository;
+        
+        this.turl = turl;
+        this.tport = tport;
+        this.tuid = tuid;
+        this.tpsw = tpsw;
     }
 
     @Override
@@ -70,6 +83,7 @@ public class OpenModelDialog extends StandardDialog {
         modelNameLbl.setLabelFor(modelNameTxt);
 
         JButton searchBtn = ComponentFactory.createButtonWithAction(new AbstractAction("Search") {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 searchForModels(modelNameTxt.getText());
             }
@@ -78,9 +92,18 @@ public class OpenModelDialog extends StandardDialog {
 
         // note that this padding numbers are Jide recommendations
         JPanel topPanel = ComponentFactory.createPanelWithLayout(new BorderLayout(6, 6));
-        topPanel.add(modelNameLbl, BorderLayout.BEFORE_LINE_BEGINS);
-        topPanel.add(modelNameTxt, BorderLayout.CENTER);
-        topPanel.add(searchBtn, BorderLayout.AFTER_LINE_ENDS);
+        
+        searchOnServerChk = new JCheckBox("Search on Server Repository");
+        topPanel.add(searchOnServerChk, BorderLayout.CENTER);
+        
+        JPanel searchPanel = ComponentFactory.createPanelWithLayout(new BorderLayout());
+        
+        searchPanel.add(modelNameLbl, BorderLayout.BEFORE_LINE_BEGINS);        
+        searchPanel.add(modelNameTxt, BorderLayout.CENTER);
+        searchPanel.add(searchBtn, BorderLayout.AFTER_LINE_ENDS);
+        
+        topPanel.add(searchPanel, BorderLayout.SOUTH);
+        
 
         // note that this padding numbers are Jide recommendations
         JPanel contentPanel = ComponentFactory.createPanelWithLayout(new BorderLayout(10, 10));
@@ -142,6 +165,7 @@ public class OpenModelDialog extends StandardDialog {
         JButton cancelButton = ComponentFactory.createButton();
         cancelButton.setName(CANCEL);
         cancelButton.setAction(new AbstractAction(UIDefaultsLookup.getString("OptionPane.cancelButtonText")) {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 setDialogResult(RESULT_CANCELLED);
                 setVisible(false);
@@ -166,7 +190,14 @@ public class OpenModelDialog extends StandardDialog {
      */
     private void searchForModels(String searchCriteria) {
         try {
-            java.util.List<ProcessingModel> models = repository.getProcessingModelsByName(searchCriteria);
+            
+            java.util.List<ProcessingModel> models;
+            
+            if(searchOnServerChk.isSelected()){
+                models = repository.getProcessingModelsByName(searchCriteria, turl, tport, tuid, tpsw);
+            } else {
+                models = repository.getProcessingModelsByName(searchCriteria);
+            }
 
             searchResultsModel.setProcessingModels(models);
         } catch (RepositoryException e) {
@@ -217,9 +248,11 @@ public class OpenModelDialog extends StandardDialog {
      * @param repository used for searching for models
      * @return selected model, or null if the user canceled
      */
-    public static ProcessingModel openProcessingModel(Component parent, OctopusRepository repository) {
+    public static ProcessingModel openProcessingModel(Component parent, OctopusRepository repository,
+                        String rurl, Integer rport, String ruid, String rpsw) {
+        
         JFrame frame = (JFrame) SwingUtilities.getAncestorOfClass(JFrame.class, parent);
-        OpenModelDialog dialog = new OpenModelDialog(frame, repository);
+        OpenModelDialog dialog = new OpenModelDialog(frame, repository, rurl, rport, ruid, rpsw);
         dialog.pack();
         dialog.setLocationRelativeTo(frame);
         dialog.setVisible(true);

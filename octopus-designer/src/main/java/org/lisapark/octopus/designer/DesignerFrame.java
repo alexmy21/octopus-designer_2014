@@ -483,7 +483,8 @@ public class DesignerFrame extends DefaultDockableBarDockableHolder {
 
         @Override
         public void actionPerformed(ActionEvent e) {
-            ProcessingModel modelToOpen = OpenModelDialog.openProcessingModel(DesignerFrame.this, repository);
+            ProcessingModel modelToOpen = OpenModelDialog.openProcessingModel(DesignerFrame.this, repository,
+                        rurl, rport, ruid, rpsw);
 
             if (modelToOpen != null) {
                 LOG.debug("Opening processing model '{}'", modelToOpen.getModelName());
