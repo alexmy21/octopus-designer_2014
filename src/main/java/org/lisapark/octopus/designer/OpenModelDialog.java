@@ -194,7 +194,7 @@ public class OpenModelDialog extends StandardDialog {
             java.util.List<ProcessingModel> models;
             
             if(searchOnServerChk.isSelected()){
-                models = repository.getProcessingModelsByName(searchCriteria, turl, tport, tuid, tpsw);
+                models = repository.getProcessingModelsByNameOnServer(searchCriteria, turl, tport, tuid, tpsw);
             } else {
                 models = repository.getProcessingModelsByName(searchCriteria);
             }
