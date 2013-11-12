@@ -28,34 +28,40 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.util.List;
+import org.openide.util.Exceptions;
 
 /**
  * @author dave sinclair(david.sinclair@lisa-park.com)
  */
 public class OpenModelDialog extends StandardDialog {
 
-    private final SearchResultListModel searchResultsModel = new SearchResultListModel();
-    private final OctopusRepository repository;
+    private final SearchLocalResultListModel searchLocalResultsModel = new SearchLocalResultListModel();
+    private final SearchRemoteResultListModel searchRemoteResultsModel = new SearchRemoteResultListModel();
+    
+    private static OctopusRepository repository;
     private ProcessingModel selectedProcessingModel;
     private JButton okButton;
     
-    private String turl;
-    private Integer tport;
-    private String tuid;
-    private String tpsw;
+    private final String jurl;
+    
+    private static String turl;
+    private static Integer tport;
+    private static String tuid;
+    private static String tpsw;
     
     private JCheckBox searchOnServerChk;
 
-    private OpenModelDialog(JFrame frame, OctopusRepository repository,
+    private OpenModelDialog(JFrame frame, OctopusRepository repository, String jurl,
                         String turl, Integer tport, String tuid, String tpsw) {
         super(frame, "Octopus");
         setResizable(false);
-        this.repository = repository;
+        OpenModelDialog.repository = repository;
         
-        this.turl = turl;
-        this.tport = tport;
-        this.tuid = tuid;
-        this.tpsw = tpsw;
+        this.jurl = jurl;
+        OpenModelDialog.turl = turl;
+        OpenModelDialog.tport = tport;
+        OpenModelDialog.tuid = tuid;
+        OpenModelDialog.tpsw = tpsw;
     }
 
     @Override
@@ -102,8 +108,7 @@ public class OpenModelDialog extends StandardDialog {
         searchPanel.add(modelNameTxt, BorderLayout.CENTER);
         searchPanel.add(searchBtn, BorderLayout.AFTER_LINE_ENDS);
         
-        topPanel.add(searchPanel, BorderLayout.SOUTH);
-        
+        topPanel.add(searchPanel, BorderLayout.SOUTH);        
 
         // note that this padding numbers are Jide recommendations
         JPanel contentPanel = ComponentFactory.createPanelWithLayout(new BorderLayout(10, 10));
@@ -112,9 +117,15 @@ public class OpenModelDialog extends StandardDialog {
 
         contentPanel.add(topPanel, BorderLayout.BEFORE_FIRST_LINE);
 
-        final JList searchList = ComponentFactory.createListWithModel(searchResultsModel);
+        final JList searchList;
+        if(searchOnServerChk.isSelected()){        
+            searchList = ComponentFactory.createListWithModel(searchRemoteResultsModel);
+        } else {
+            searchList = ComponentFactory.createListWithModel(searchLocalResultsModel);
+        }
         searchList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         searchList.setCellRenderer(new SearchResultListCellRenderer());
+        
         searchList.addListSelectionListener(new ListSelectionListener() {
             @Override
             public void valueChanged(ListSelectionEvent e) {
@@ -123,7 +134,11 @@ public class OpenModelDialog extends StandardDialog {
                     int selectedIndex = searchList.getSelectedIndex();
                     if (selectedIndex > -1) {
                         okButton.setEnabled(true);
-                        selectedProcessingModel = (ProcessingModel) searchResultsModel.getElementAt(selectedIndex);
+                        if(searchOnServerChk.isSelected()){
+                            selectedProcessingModel = (ProcessingModel) searchRemoteResultsModel.getElementAt(selectedIndex);
+                        } else {
+                            selectedProcessingModel = (ProcessingModel) searchLocalResultsModel.getElementAt(selectedIndex);
+                        }
 
                     } else {
                         okButton.setEnabled(false);
@@ -190,16 +205,15 @@ public class OpenModelDialog extends StandardDialog {
      */
     private void searchForModels(String searchCriteria) {
         try {
-            
-            java.util.List<ProcessingModel> models;
-            
+           
             if(searchOnServerChk.isSelected()){
-                models = repository.getProcessingModelsByNameOnServer(searchCriteria, turl, tport, tuid, tpsw);
+                List<String> models = repository.getModelList(searchCriteria, jurl);
+                searchRemoteResultsModel.setProcessingModels(models);
             } else {
-                models = repository.getProcessingModelsByName(searchCriteria);
+                List<ProcessingModel> models = repository.getProcessingModelsByName(searchCriteria);
+                searchLocalResultsModel.setProcessingModels(models);
             }
 
-            searchResultsModel.setProcessingModels(models);
         } catch (RepositoryException e) {
             ErrorDialog.showErrorDialog("Octopus", this, e, "Problem searching for models.");
         }
@@ -208,7 +222,7 @@ public class OpenModelDialog extends StandardDialog {
     /**
      * {@link ListModel} for holding {@link ProcessingModel}s results from a search
      */
-    private static class SearchResultListModel extends AbstractListModel {
+    private static class SearchLocalResultListModel extends AbstractListModel {
 
         private java.util.List<ProcessingModel> processingModels;
 
@@ -225,6 +239,36 @@ public class OpenModelDialog extends StandardDialog {
         @Override
         public Object getElementAt(int index) {
             return processingModels.get(index);
+        }
+    }
+    
+    private static class SearchRemoteResultListModel extends AbstractListModel {
+
+        private java.util.List<String> modelNameList;
+
+        private void setProcessingModels(List<String> processingModels) {
+            this.modelNameList = processingModels;
+            fireContentsChanged(this, -1, -1);
+        }
+
+        @Override
+        public int getSize() {
+            return modelNameList != null ? modelNameList.size() : 0;
+        }
+
+        @Override
+        public ProcessingModel getElementAt(int index) { 
+            try {
+                return getRemoteProcessingModel(modelNameList.get(index));
+            } catch (RepositoryException ex) {
+                Exceptions.printStackTrace(ex);
+            }
+            
+            return null;
+        }
+
+        private ProcessingModel getRemoteProcessingModel(String modelName) throws RepositoryException {
+            return repository.getProcessingModelByName(modelName, turl, tport, tuid, tpsw);
         }
     }
 
@@ -246,13 +290,17 @@ public class OpenModelDialog extends StandardDialog {
      *
      * @param parent     to center dialog over
      * @param repository used for searching for models
+     * @param rurl
+     * @param rport
+     * @param ruid
+     * @param rpsw
      * @return selected model, or null if the user canceled
      */
-    public static ProcessingModel openProcessingModel(Component parent, OctopusRepository repository,
+    public static ProcessingModel openProcessingModel(Component parent, OctopusRepository repository, String jurl,
                         String rurl, Integer rport, String ruid, String rpsw) {
         
         JFrame frame = (JFrame) SwingUtilities.getAncestorOfClass(JFrame.class, parent);
-        OpenModelDialog dialog = new OpenModelDialog(frame, repository, rurl, rport, ruid, rpsw);
+        OpenModelDialog dialog = new OpenModelDialog(frame, repository, jurl, rurl, rport, ruid, rpsw);
         dialog.pack();
         dialog.setLocationRelativeTo(frame);
         dialog.setVisible(true);

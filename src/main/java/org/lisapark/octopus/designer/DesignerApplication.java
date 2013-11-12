@@ -47,6 +47,9 @@ public class DesignerApplication {
         String luid = properties.getProperty("db4o.local.server.uid");
         String lpsw = properties.getProperty("db4o.local.server.psw");
         
+        String jurl = properties.getProperty("jetty.remote.server.url");
+//        Integer jport = Integer.parseInt(properties.getProperty("jetty.remote.server.port"));
+        
         String rurl = properties.getProperty("db4o.remote.server.url");
         Integer rport = Integer.parseInt(properties.getProperty("db4o.remote.server.port"));
         String ruid = properties.getProperty("db4o.remote.server.uid");
@@ -54,10 +57,11 @@ public class DesignerApplication {
 
         OctopusRepository repository = new OctopusDb4oRepository(repositoryFile, lport, luid, lpsw);
         
-        LookAndFeelFactory.installJideExtension(5);
+        LookAndFeelFactory
+//                .installJideExtension(5);        
+        .installDefaultLookAndFeelAndExtension();
         
-//        .installDefaultLookAndFeelAndExtension();
-        final DesignerFrame designerFrame = new DesignerFrame(repository, rurl, rport, ruid, rpsw);
+        final DesignerFrame designerFrame = new DesignerFrame(repository, jurl, rurl, rport, ruid, rpsw);
         try {
             designerFrame.loadInitialDataFromRepository();
 
