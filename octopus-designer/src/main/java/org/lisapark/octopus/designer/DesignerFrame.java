@@ -124,6 +124,7 @@ public class DesignerFrame extends DefaultDockableBarDockableHolder {
     private LabelStatusBarItem modelNameStatusItem;
     private JTextArea outputTxt;
     
+    private String jurl;
     private String rurl;
     private Integer rport;
     private String ruid;
@@ -138,10 +139,11 @@ public class DesignerFrame extends DefaultDockableBarDockableHolder {
      * @param rpsw 
      */
 
-    public DesignerFrame(OctopusRepository repository, String rurl, Integer rport, String ruid, String rpsw) {
+    public DesignerFrame(OctopusRepository repository, String jurl, String rurl, Integer rport, String ruid, String rpsw) {
         super("Octopus");
         this.repository = repository;
         
+        this.jurl = jurl;
         this.rurl = rurl;
         this.rport = rport;
         this.ruid = ruid;
@@ -484,7 +486,7 @@ public class DesignerFrame extends DefaultDockableBarDockableHolder {
         @Override
         public void actionPerformed(ActionEvent e) {
             ProcessingModel modelToOpen = OpenModelDialog.openProcessingModel(DesignerFrame.this, repository,
-                        rurl, rport, ruid, rpsw);
+                        jurl, rurl, rport, ruid, rpsw);
 
             if (modelToOpen != null) {
                 LOG.debug("Opening processing model '{}'", modelToOpen.getModelName());
