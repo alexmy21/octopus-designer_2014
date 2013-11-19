@@ -144,12 +144,6 @@ Contributors:
             <version>8.1-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
-        <dependency>
-            <groupId>com.db4o</groupId>
-            <artifactId>com.db4o.drs</artifactId>
-            <version>8.1</version>
-            <type>jar</type>
-        </dependency>
 
         <dependency>
             <groupId>org.mockito</groupId>
@@ -302,10 +296,21 @@ Contributors:
             <version>1.9.3-SNAPSHOT</version>
             <type>jar</type>
         </dependency>
+        
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpcore</artifactId>
+            <version>4.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.httpcomponents</groupId>
+            <artifactId>httpclient</artifactId>
+            <version>4.3.1</version>
+        </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>octopus-core-11</artifactId>
-            <version>0.5</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
