@@ -10,6 +10,7 @@
  */
 package org.lisapark.octopus.designer;
 
+import com.google.common.collect.Lists;
 import com.jidesoft.dialog.BannerPanel;
 import com.jidesoft.dialog.ButtonPanel;
 import com.jidesoft.dialog.StandardDialog;
@@ -32,11 +33,11 @@ import org.openide.util.Exceptions;
 
 /**
  * @author dave sinclair(david.sinclair@lisa-park.com)
+ * Modified by Alex Mylnikov (alexmy@lisa-park.com) 2013-11-14
  */
 public class OpenModelDialog extends StandardDialog {
 
-    private final SearchLocalResultListModel searchLocalResultsModel = new SearchLocalResultListModel();
-    private final SearchRemoteResultListModel searchRemoteResultsModel = new SearchRemoteResultListModel();
+    private final SearchResultListModel searchResultsModel = new SearchResultListModel();
     
     private static OctopusRepository repository;
     private ProcessingModel selectedProcessingModel;
@@ -49,7 +50,7 @@ public class OpenModelDialog extends StandardDialog {
     private static String tuid;
     private static String tpsw;
     
-    private JCheckBox searchOnServerChk;
+    private static JCheckBox searchOnServerChk;
 
     private OpenModelDialog(JFrame frame, OctopusRepository repository, String jurl,
                         String turl, Integer tport, String tuid, String tpsw) {
@@ -67,7 +68,8 @@ public class OpenModelDialog extends StandardDialog {
     @Override
     public JComponent createBannerPanel() {
         BannerPanel bannerPanel = new BannerPanel("Open model",
-                "Please enter the name of the model that you want to open. Attention. Do not use spcial symbols.",
+                "Please enter the name of the model that you want to open."
+                + " Attention. Do not use spcial symbols.",
                 DesignerIconsFactory.getImageIcon(DesignerIconsFactory.OCTOPUS_LARGE));
         bannerPanel.setBackground(Color.WHITE);
         bannerPanel.setBorder(BorderFactory.createBevelBorder(BevelBorder.LOWERED));
@@ -117,12 +119,7 @@ public class OpenModelDialog extends StandardDialog {
 
         contentPanel.add(topPanel, BorderLayout.BEFORE_FIRST_LINE);
 
-        final JList searchList;
-        if(searchOnServerChk.isSelected()){        
-            searchList = ComponentFactory.createListWithModel(searchRemoteResultsModel);
-        } else {
-            searchList = ComponentFactory.createListWithModel(searchLocalResultsModel);
-        }
+        final JList searchList = ComponentFactory.createListWithModel(searchResultsModel);
         searchList.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         searchList.setCellRenderer(new SearchResultListCellRenderer());
         
@@ -134,12 +131,7 @@ public class OpenModelDialog extends StandardDialog {
                     int selectedIndex = searchList.getSelectedIndex();
                     if (selectedIndex > -1) {
                         okButton.setEnabled(true);
-                        if(searchOnServerChk.isSelected()){
-                            selectedProcessingModel = (ProcessingModel) searchRemoteResultsModel.getElementAt(selectedIndex);
-                        } else {
-                            selectedProcessingModel = (ProcessingModel) searchLocalResultsModel.getElementAt(selectedIndex);
-                        }
-
+                        selectedProcessingModel = (ProcessingModel) searchResultsModel.getModelAt(selectedIndex);
                     } else {
                         okButton.setEnabled(false);
                     }
@@ -174,6 +166,7 @@ public class OpenModelDialog extends StandardDialog {
                 dispose();
             }
         });
+        
         // we need to disable the button AFTER setting the action
         okButton.setEnabled(false);
 
@@ -203,51 +196,34 @@ public class OpenModelDialog extends StandardDialog {
      *
      * @param searchCriteria to use when searching
      */
-    private void searchForModels(String searchCriteria) {
-        try {
-           
+    private synchronized void searchForModels(String searchCriteria) {
+        List<String> models;
+        try {           
             if(searchOnServerChk.isSelected()){
-                List<String> models = repository.getModelList(searchCriteria, jurl);
-                searchRemoteResultsModel.setProcessingModels(models);
+                models = repository.getModelNameList(searchCriteria, jurl);
             } else {
-                List<ProcessingModel> models = repository.getProcessingModelsByName(searchCriteria);
-                searchLocalResultsModel.setProcessingModels(models);
+                models = getModelList(repository.getProcessingModelsByName(searchCriteria));                
             }
-
+            searchResultsModel.setProcessingModels(models);
         } catch (RepositoryException e) {
             ErrorDialog.showErrorDialog("Octopus", this, e, "Problem searching for models.");
         }
     }
 
-    /**
-     * {@link ListModel} for holding {@link ProcessingModel}s results from a search
-     */
-    private static class SearchLocalResultListModel extends AbstractListModel {
-
-        private java.util.List<ProcessingModel> processingModels;
-
-        private void setProcessingModels(List<ProcessingModel> processingModels) {
-            this.processingModels = processingModels;
-            fireContentsChanged(this, -1, -1);
+    private List<String> getModelList(List<ProcessingModel> processingModelsByName) {
+        List<String> modelNameList = Lists.newArrayList();
+        for(ProcessingModel model : processingModelsByName){
+            modelNameList.add(model.getModelName());
         }
-
-        @Override
-        public int getSize() {
-            return processingModels != null ? processingModels.size() : 0;
-        }
-
-        @Override
-        public Object getElementAt(int index) {
-            return processingModels.get(index);
-        }
+        return modelNameList;
     }
-    
-    private static class SearchRemoteResultListModel extends AbstractListModel {
+
+    private static class SearchResultListModel extends AbstractListModel {
 
         private java.util.List<String> modelNameList;
 
-        private void setProcessingModels(List<String> processingModels) {
-            this.modelNameList = processingModels;
+        private void setProcessingModels(List<String> modelNameList) {
+            this.modelNameList = modelNameList;
             fireContentsChanged(this, -1, -1);
         }
 
@@ -257,14 +233,21 @@ public class OpenModelDialog extends StandardDialog {
         }
 
         @Override
-        public ProcessingModel getElementAt(int index) { 
+        public String getElementAt(int index) {
+            return modelNameList.get(index);
+        }
+        
+        public ProcessingModel getModelAt(int index) { 
             try {
-                return getRemoteProcessingModel(modelNameList.get(index));
+                if (searchOnServerChk.isSelected()) {
+                    return getRemoteProcessingModel(modelNameList.get(index));
+                } else {
+                    return repository.getProcessingModelByName(modelNameList.get(index));
+                }
             } catch (RepositoryException ex) {
                 Exceptions.printStackTrace(ex);
-            }
-            
-            return null;
+                return null;
+            }            
         }
 
         private ProcessingModel getRemoteProcessingModel(String modelName) throws RepositoryException {
@@ -278,9 +261,8 @@ public class OpenModelDialog extends StandardDialog {
     private static class SearchResultListCellRenderer extends DefaultListCellRenderer {
         @Override
         public Component getListCellRendererComponent(JList list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-            ProcessingModel processingModel = (ProcessingModel) value;
-
-            return super.getListCellRendererComponent(list, processingModel.getModelName(), index, isSelected, cellHasFocus);
+            String modelName = (String) value;
+            return super.getListCellRendererComponent(list, modelName, index, isSelected, cellHasFocus);
         }
     }
 
@@ -307,7 +289,6 @@ public class OpenModelDialog extends StandardDialog {
 
         if (dialog.getDialogResult() == StandardDialog.RESULT_AFFIRMED) {
             return dialog.selectedProcessingModel;
-
         } else {
             return null;
         }
