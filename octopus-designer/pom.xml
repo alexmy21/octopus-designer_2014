@@ -273,7 +273,7 @@ Contributors:
             <artifactId>neo4j-rest-graphdb</artifactId>
             <version>1.9.M04</version>
             <type>jar</type>
-        </dependency>
+        </dependency-->
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>org-neo4j-index-impl-lucene</artifactId>
@@ -283,7 +283,7 @@ Contributors:
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-core</artifactId>
             <version>3.5.0</version>
-        </dependency-->
+        </dependency>
         
         <dependency>
             <groupId>org.neo4j</groupId>
