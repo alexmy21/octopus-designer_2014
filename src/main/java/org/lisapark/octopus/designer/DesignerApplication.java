@@ -58,8 +58,8 @@ public class DesignerApplication {
         OctopusRepository repository = new OctopusDb4oRepository(repositoryFile, lport, luid, lpsw);
         
         LookAndFeelFactory
-//                .installJideExtension(5);        
-        .installDefaultLookAndFeelAndExtension();
+                .installJideExtension(5);        
+//        .installDefaultLookAndFeelAndExtension();
         
         final DesignerFrame designerFrame = new DesignerFrame(repository, jurl, rurl, rport, ruid, rpsw);
         try {
